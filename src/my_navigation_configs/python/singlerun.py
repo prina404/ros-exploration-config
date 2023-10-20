@@ -101,7 +101,7 @@ def checkActiveGoal(process, folder):
                 p = Popen("rosnode kill explore", shell=True)
                 p.wait()
                 firstRun = False
-                lastUpdate = rospy.get_rostime().secs - 300
+                lastUpdate = rospy.get_rostime().secs - 100
                 continue
             saveMap(folder)
             print("SHUTTING DOWN DUE TO GOAL TIMEOUT")
