@@ -1,0 +1,10 @@
+GlobalPlanner:
+  visualize_potential: true
+  neutral_cost: 40
+  cost_factor: 3
+  lethal_cost: 200 
+  outline_map: true     
+  default_tolerance: 0
+  use_dijkstra: true
+  allow_unknown: true
+  use_quadratic: true
