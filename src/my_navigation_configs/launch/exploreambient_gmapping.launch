@@ -24,7 +24,7 @@
 	<node name="Mapper" pkg="gmapping" type="slam_gmapping" args="_xmin:=-50 _ymin:=-50 _ymax:=50
      _xmax:=50 _ogain:=3.0 _minimumScore:=50 _angularUpdate:=0.35 _linearUpdate:=1
      _map_update_interval:=5.0 _temporal_update:=2 _odom_frame:=odom _particles:=15 scan:=base_scan
-     _srr:=0.01 _srt:=0.02 _str:=0.01 _stt:=0.02 _delta:=0.03 _maxUrange:=10 _maxRange:=15
+     _srr:=0.01 _srt:=0.02 _str:=0.01 _stt:=0.02 _delta:=0.05 _maxUrange:=10 _maxRange:=15
 	 _throttle_scans:=1" />
 
 

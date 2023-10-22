@@ -26,10 +26,8 @@ def getMap(p, folder):
     Saves the map every 60 seconds
     """
     minutes = 0
-    first_time = True
-    maxmapsave = 50
+    maxmapsave = 60
     seconds_mapsave = 60
-    count = 1
 
     if not exists(join(folder, "Maps/")):
         makedirs(join(folder, "Maps/"))
@@ -51,12 +49,11 @@ def getMap(p, folder):
         except IOError:
             print("cannot convert")
 
-        if not first_time and count > maxmapsave:
+        if int(minutes) > maxmapsave:
             print("KILLING PROCESS DUE TO TIMEOUT")
             killProcess(p)
             return
 
-        first_time = False
         minutes += seconds_mapsave / 60
         time.sleep(seconds_mapsave)
 
