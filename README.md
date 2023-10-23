@@ -106,20 +106,22 @@ undocumented stuff that gave me plenty of headaches while working with ROS.
 ### TF_REPEATED_DATA spam
 As discussed [here](https://github.com/ros/geometry2/issues/467#issuecomment-1238639474) a not-so-elegant
 fix consists in launching the script with a stdout+stderr redirection, filtering out
-every message not matching with the provided pattern. As an example the resulting command should
-look like this:
-```shell
-$ python3 singlerun.py ../worlds/E34-2.world 2> >(grep -v TF_REPEATED_DATA buffer_core)
-```
-To be fair the syntax of the command is not entirely correct, the pattern specified for the inverse
-matching is separated by a space, thus `buffer_core` is interpreted as a subsequent parameter 
-and not as part of the pattern. It filters more output than it should but works 
-okay in practice, further investigation on the grep manual would probably yield a better solution.
+every message not matching with the provided pattern. 
+The proposed command is `2> >(grep -v TF_REPEATED_DATA buffer_core)`, but its syntax is not
+correct: the pattern specified for the inverse matching is separated by a space, 
+thus `buffer_core` is interpreted as a subsequent parameter and not as part of the pattern. 
+It filters more output than it should but works okay in practice. 
+My version of the redirection is `2> >(grep -v -E 'TF_REPEATED_DATA|buffer_core.cpp|^$')`.
 
-Be careful using redirection while trying new configs, because most warnings/errors will be suppressed, 
-and terminal IO formatting will probably be broken afterwards.
+As an example the resulting command should look like this:
+```shell
+$ python3 singlerun.py ../worlds/E34-2.world 2> >(grep -v -E 'TF_REPEATED_DATA|buffer_core.cpp|^$')
+```
+
+
+Note that when using this kind of redirection, terminal IO formatting will probably be broken afterwards.
 Keep an eye also on CPU usage, in some early tests filtering out the warning spam reduced the CPU load
-by a 10~15%
+by a 10~15%!
 
 ---
 ### Stage

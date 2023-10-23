@@ -59,5 +59,5 @@ define pioneer3at position
 )
 
 interval_sim 100  # simulation timestep in milliseconds
-speedup 8
+speedup 5
 
