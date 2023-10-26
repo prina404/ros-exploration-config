@@ -2,27 +2,30 @@ import sys
 import subprocess
 import os
 from concurrent.futures import ThreadPoolExecutor
+import progressbar
 
 
-def spawn_container(mapName: str):
-    print(f"Started run: {mapName}")
+def spawn_container(mapName: str, i, bar):
+    bar.update(i)
+
     launchstr = f"""docker run -it \\
         -v ./worlds:/root/catkin_ws/src/my_navigation_configs/worlds \\
         -v ./output:/root/catkin_ws/src/my_navigation_configs/runs/outputs \\
         'rosnoetic:explore' worlds/{mapName}"""
     p = subprocess.Popen(launchstr, shell=True, stdout=subprocess.DEVNULL)
     p.wait()
-    print(f"----> Finished exploration of {mapName}")
+
 
 
 def main(workers: int):
         pool = ThreadPoolExecutor(max_workers=workers) 
         try:
-            futures = []
-            for name in os.listdir("worlds/"):
-                if name.endswith(".world"):
-                    futures.append(pool.submit(spawn_container, name))
-            pool.shutdown(wait=True)
+            with progressbar.ProgressBar(max_value=len(os.listdir("worlds/"))) as bar:
+                futures = []
+                for i, name in enumerate(os.listdir("worlds/")):
+                    if name.endswith(".world"):
+                        futures.append(pool.submit(spawn_container, name, i, bar))
+                pool.shutdown(wait=True)
         except:
             pool.shutdown(wait=False)
             subprocess.Popen("docker kill $(docker ps -q)", shell=True)
