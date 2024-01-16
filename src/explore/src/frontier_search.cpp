@@ -91,6 +91,7 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
       frontier_list.begin(), frontier_list.end(),
       [](const Frontier& f1, const Frontier& f2) { return f1.cost < f2.cost; });
   
+  std::vector<Frontier> frontier_list_backup {frontier_list};
   int cnt = 0;
   for (auto& frontier : frontier_list) {
     if (cnt++ < 15) {
@@ -110,6 +111,8 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
       frontier_list.begin(), frontier_list.end(),
       [](const Frontier& f1, const Frontier& f2) { return f1.cost < f2.cost; });
 
+  // if aStar couldn't find the closest frontier, fall back to euclidean distance
+  if (frontier_list[0].min_distance == 10000) return frontier_list_backup;
 
   return frontier_list;
 }
