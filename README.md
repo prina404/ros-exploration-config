@@ -2,40 +2,12 @@
 This repo contains the code and configs used to perform a distance-greedy 
 exploration of indoor environments.
 
-Main nodes used: `move_base`, `gmapping`, `stage_ros`, `explore_lite`.
+ROS nodes used: `move_base`, `gmapping`, `stage_ros`, `explore_lite`.
 Their configurations can be found either in the `params` folder or 
 in the `exploreambient_gmapping.launch` file.
 
 The `explore` package under `src/` is based on my fork of the `explore_lite` package, 
 the implemented changes are [documented here](https://github.com/prina404/m-explore).
-
-## Details
-
-The config provided (roughly) simulates a turtlebot 3 with a 360° laser sensor, 
-the exploration policy is as distance-greedy as possible: 
-the gain component (size) of the frontier is completely ignored, and the closest frontier is chosen instead.
-
-*Note:* as explained in the explore_lite fork documentation, a frontier may be flagged as closest even if 
-it's not *actually* the closest one (it should be amongst the closer ones anyway).
-
----
-
-The `singlerun.py` script is responsible for:
-- Launching the `exploreambient_gmapping.launch` file.
-- Saving every 60 seconds (wall time) a snapshot of the explored map
-- Stopping the exploration when there are no frontiers available/reachable.
-
-The exploration actually stops if a new goal isn't being published for more than 500 (ROS) seconds, 
-the `explore` node is then respawned to try reaching any frontiers previously marked as unreachable. 
-In case no old frontiers are present the process is killed after 100 (ROS) seconds.
-
-The speed-up of the simulation is controlled by the `speedup` parameter in the `worldcfg.inc` config file,
-any half-decent laptop should be capable of handling at least 2x ~ 4x, remember to monitor per-core CPU usage
-and in case of core saturation (*looking at you, gmapping*) reduce the multiplier.
-On a 9th gen intel desktop processor I managed to get decent results with speeds up to 15x.
-
-The map images as well as the bagfiles are saved under `runs/outputs/` in the corresponding directories.
-If exploration has ended correctly the latest map image saved should be called `Map.png`.
 
 
 ## Usage Examples
@@ -79,6 +51,35 @@ terminated results are saved in the `output` folder.
 *Note:* I haven't set up the correct permissions of files and folders created by the containers, 
 if write privileges are needed a quick fix is `$ sudo chown -R $USER output/**`
 
+## Details
+
+The config provided (roughly) simulates a turtlebot 3 with a 360° laser sensor, 
+the exploration policy is as distance-greedy as possible: 
+the gain component (size) of the frontier is completely ignored, and the closest frontier is chosen instead.
+
+The config in this repo was painstakingly tuned to work in uncluttered environments. In case you need to explore cluttered environments, check out [d-ber's configuration](https://github.com/d-ber/exp_cov_docker).  
+
+*Note:* as explained in the explore_lite fork documentation, a frontier may be flagged as closest even if 
+it's not *actually* the closest one (it should be amongst the closer ones anyway).
+
+---
+
+The `singlerun.py` script is responsible for:
+- Launching the `exploreambient_gmapping.launch` file.
+- Saving every 60 seconds (wall time) a snapshot of the explored map
+- Stopping the exploration when there are no frontiers available/reachable.
+
+The exploration actually stops if a new goal isn't being published for more than 500 (ROS) seconds, 
+the `explore` node is then respawned to try reaching any frontiers previously marked as unreachable. 
+In case no old frontiers are present the process is killed after 100 (ROS) seconds.
+
+The speed-up of the simulation is controlled by the `speedup` parameter in the `worldcfg.inc` config file,
+any half-decent laptop should be capable of handling at least 2x ~ 4x, remember to monitor per-core CPU usage
+and in case of core saturation (*looking at you, gmapping*) reduce the multiplier.
+On a 9th gen intel desktop processor I managed to get decent results with speeds up to 15x.
+
+The partial map images as well as the bagfiles are saved under `outputs/` in the corresponding directories.
+If exploration has ended correctly the latest map image saved should be called `Map.png`.
 ## Known Issues
 PRs are *very* welcome :)
 
@@ -107,38 +108,31 @@ undocumented stuff that gave me plenty of headaches while working with ROS.
 As discussed [here](https://github.com/ros/geometry2/issues/467#issuecomment-1238639474) a not-so-elegant
 fix consists in launching the script with a stdout+stderr redirection, filtering out
 every message not matching with the provided pattern. 
-The proposed command is `2> >(grep -v TF_REPEATED_DATA buffer_core)`, but its syntax is not
-correct: the pattern specified for the inverse matching is separated by a space, 
-thus `buffer_core` is interpreted as a subsequent parameter and not as part of the pattern. 
-It filters more output than it should but works okay in practice. 
-My version of the redirection is `2> >(grep -v -E 'TF_REPEATED_DATA|buffer_core.cpp|^$')`.
 
-As an example the resulting command should look like this:
+The resulting command is the following:
 ```shell
 $ python3 singlerun.py ../worlds/E34-2.world 2> >(grep -v -E 'TF_REPEATED_DATA|buffer_core.cpp|^$')
 ```
 
 
 Note that when using this kind of redirection, terminal IO formatting will probably be broken afterwards.
-Keep an eye also on CPU usage, in some early tests filtering out the warning spam reduced the CPU load
-by a 10~15%!
+Keep an eye also on CPU usage, you should notice a CPU load reduction up to 10~15%!
 
 ---
 ### Stage
-Cropping of the empty space surrounding the building is performed automatically by stage, 
-this means that when creating the `.world` files the `size [x y z]` parameters should be relative
+***Important*** (but undocumented): Stage automatically crops the empty space surrounding the building. Thus, when creating the `.world` files, the `size [x y z]` parameters should be relative
 to the building's bounding box, not the whole image size.
 
 In case using the image size is preferred, adding a single-pixel black edge is sufficient to prevent
-stage from cropping. In the `util` folder the `makePicBorder.py` script does just that.
+stage from cropping. In the `util` folder the `makePicBorder.py` script is used to add such black border.
 
 ---
-By documentation headless mode can be activated with the `-g` option 
+By documentation, headless mode can be activated with the `-g` option 
 __but__, if enabled, stage completely ignores the `speedup` parameter and publishes the `/clock` 
 topic updates as quickly as possible, thus making it impossible for other nodes to keep up
-with. 
+with (i.e., headless mode breaks ROS compatibility). 
 
-For this reason in the docker image an X virtual framebuffer (`Xvfb`) 
+For this reason, in the docker image an X virtual framebuffer (`Xvfb`) 
 is required to run stage in headful mode, without actually having a display output.
 
 ---
@@ -148,11 +142,10 @@ in the detection of unreachable frontiers, wasting time until all frontiers are 
 ---
 ### Gmapping CPU usage
 
-When looking at gmapping's default parameters the `xmax, xmin, ymax, ymin` are set to $\pm 100$, 
-resulting in an output map resolution of 4000x4000 px. This causes a lot of unnecessary load,
-missed updates, stutters and worse SLAM performance.
+Gmapping's default parameters the `xmax, xmin, ymax, ymin` are set to $\pm 100$, 
+resulting in an output map resolution of 4000x4000 px (with a `delta` resolution of 0.05). This causes a lot of unnecessary load, resulting in worse SLAM performance.
 
-The config provided in this repo saves 2000x2000 px maps, 
+The config provided in this repo sets the `xmax, xmin, ymax, ymin` to $\pm 50$, 
 which should be plentiful for most environments.
 If the laser scan reaches the map borders, gmapping will add a constant amount of padding, 
 this way early map images may have a smaller resolution than the later ones.
@@ -163,11 +156,12 @@ a container on a cluster the bottleneck will be the single core performance of t
 ---
 ### Global Planner
 
-By [documentation,](http://wiki.ros.org/global_planner) it is possible to specify the
-`defafult_tolerance` parameter, but as discussed [here](https://answers.ros.org/question/239236/setting-default-tolerance-on-global-planner-with-move-base/), 
-it doesn't do anything. Sometimes (mostly due to SLAM inaccuracy or stage's bugs) 
-some goals are published right on lethal obstacles, resulting in a failure to compute a path towards 
-such goals.
+According to the [documentation,](http://wiki.ros.org/global_planner) it is possible to specify the
+`defafult_tolerance` parameter, but, as discussed [here](https://answers.ros.org/question/239236/setting-default-tolerance-on-global-planner-with-move-base/), 
+it doesn't do anything. 
+
+Occasionally, (due to SLAM inaccuracy or stage's bugs) goals are published right on top of lethal obstacles, resulting in a failure to compute a path towards 
+them.
 
 A fix was [proposed but never merged](https://github.com/ros-planning/navigation/pull/1041), 
 there are also some forks that re-implemented the expected tolerance behavior.
